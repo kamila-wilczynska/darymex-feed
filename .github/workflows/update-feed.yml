@@ -1,0 +1,36 @@
+name: Update Darymex Feed
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'  # Every 12 hours
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  update-feed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180  # 3h max for large feeds
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate feed
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python generate_feed.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/output_feed.xml data/original.xml
+          git diff --staged --quiet || git commit -m "Auto-update feed $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
